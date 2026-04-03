@@ -158,8 +158,7 @@ function addPeopleToTable(tg){
   for(var i=0;i<Math.min(count,seats.length);i++){
     var s=seats[i];
     var sc=shirtColors[Math.floor(Math.random()*shirtColors.length)];
-    var sk=skinColors[Math.floor(Math.random()*skinColors.length)];
-    var p=mkPerson(sc,sk);
+    var p=mkPerson(sc);
     p.position.set(s.x,0,s.z);p.rotation.y=s.ry;
     tg.add(p);
   }

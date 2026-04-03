@@ -298,17 +298,19 @@ function init(){
   var sn=new THREE.Mesh(new THREE.BoxGeometry(2,0.5,0.05),new THREE.MeshBasicMaterial({color:0xffcc00}));sn.position.set(0,1.9,-0.65);bg.add(sn);
   bg.position.set(0,0,-7);scene.add(bg);
 
-  // Bartender - friendly bearded LEGO figure behind the bar
-  var bartender=mkLego(0x228B22,0x222222,0x663300,'flat');
-  // Beard - brown box under face
-  var beard=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.1,0.12),new THREE.MeshLambertMaterial({color:0x5c3317}));
-  beard.position.set(0,0.86,0.1);bartender.add(beard);
+  // Bartender - friendly bearded LEGO figure behind the bar, scaled up and visible
+  var bartender=mkLego(0x228B22,0x1a1a1a,0x663300,'flat');
+  bartender.scale.set(1.4,1.4,1.4);
+  // Beard
+  var beard=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.12,0.14),new THREE.MeshLambertMaterial({color:0x5c3317}));
+  beard.position.set(0,0.85,0.12);bartender.add(beard);
   // Mustache
-  var mustache=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.06),new THREE.MeshLambertMaterial({color:0x4a2810}));
-  mustache.position.set(0,0.91,0.13);bartender.add(mustache);
-  // Wider smile for friendly look
-  bartender.children.forEach(function(c){if(c.geometry&&c.geometry.parameters&&c.geometry.parameters.width===0.08&&c.geometry.parameters.height===0.015){c.scale.x=1.5;c.position.y=0.885;}});
-  bartender.position.set(0,0,-7.6);bartender.rotation.y=Math.PI;
+  var mustache=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.035,0.07),new THREE.MeshLambertMaterial({color:0x4a2810}));
+  mustache.position.set(0,0.91,0.14);bartender.add(mustache);
+  // Position: behind bar but elevated so head+body sticks out above the counter
+  bartender.position.set(0,0.3,-7.8);
+  // Face toward the player (toward +z)
+  bartender.rotation.y=0;
   scene.add(bartender);
 
   // Trees - bright summer green

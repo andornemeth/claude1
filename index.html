@@ -295,7 +295,17 @@ function init(){
   bg.add(mb(3,1.1,1.2,0xc8a84e,0,0.55,0));bg.add(mb(3.2,0.1,1.4,0x6b4226,0,1.15,0));
   var tap=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,8),new THREE.MeshLambertMaterial({color:0xdddddd}));tap.position.set(0,1.4,0);bg.add(tap);
   bg.add(mb(0.15,0.2,0.05,0x222222,0,1.7,0));
-  var sn=new THREE.Mesh(new THREE.BoxGeometry(2,0.5,0.05),new THREE.MeshBasicMaterial({color:0xffcc00}));sn.position.set(0,1.9,-0.65);bg.add(sn);
+  // Sign board
+  var sn=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.6,0.05),new THREE.MeshLambertMaterial({color:0xf0c030}));sn.position.set(0,1.9,-0.65);bg.add(sn);
+  // Sign text via canvas texture
+  var signCanvas=document.createElement('canvas');signCanvas.width=256;signCanvas.height=64;
+  var sctx=signCanvas.getContext('2d');
+  sctx.fillStyle='#f0c030';sctx.fillRect(0,0,256,64);
+  sctx.fillStyle='#3a2000';sctx.font='bold 36px Courier New';sctx.textAlign='center';sctx.textBaseline='middle';
+  sctx.fillText('Darmstadt',128,32);
+  var signTex=new THREE.CanvasTexture(signCanvas);
+  var signFace=new THREE.Mesh(new THREE.PlaneGeometry(2,0.5),new THREE.MeshBasicMaterial({map:signTex}));
+  signFace.position.set(0,1.9,-0.63);bg.add(signFace);
   bg.position.set(0,0,-7);scene.add(bg);
 
   // Bartender - friendly bearded LEGO figure behind the bar, scaled up and visible

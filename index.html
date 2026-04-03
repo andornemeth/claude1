@@ -207,63 +207,83 @@ function init(){
   var lp=[[-6,3.5,-6],[6,3.5,-6],[-6,3.5,6],[6,3.5,6],[0,3.5,0],[-3,3.5,-3],[3,3.5,-3],[-3,3.5,3],[3,3.5,3]];
   for(var i=0;i<lp.length;i++){var b=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6),new THREE.MeshBasicMaterial({color:0xffeeaa}));b.position.set(lp[i][0],lp[i][1],lp[i][2]);scene.add(b);}
 
-  // Procedural gravel texture
-  var gravelCanvas=document.createElement('canvas');gravelCanvas.width=256;gravelCanvas.height=256;
+  // Procedural gravel texture - high contrast, no ellipse (Android compat)
+  var gravelCanvas=document.createElement('canvas');gravelCanvas.width=512;gravelCanvas.height=512;
   var gctx=gravelCanvas.getContext('2d');
-  // Base warm beige
-  gctx.fillStyle='#C4A882';gctx.fillRect(0,0,256,256);
-  // Scatter small stones/pebbles
-  for(var gi=0;gi<800;gi++){
-    var gx=Math.random()*256,gy=Math.random()*256;
-    var gs=Math.random()*3+1;
-    var gb=Math.floor(160+Math.random()*60);
-    var gg=Math.floor(140+Math.random()*50);
-    var gr=Math.floor(130+Math.random()*40);
-    gctx.fillStyle='rgb('+gb+','+gg+','+gr+')';
-    gctx.beginPath();gctx.ellipse(gx,gy,gs,gs*0.7,Math.random()*Math.PI,0,Math.PI*2);gctx.fill();
+  // Sandy base
+  gctx.fillStyle='#B8A07A';gctx.fillRect(0,0,512,512);
+  // Noise layer
+  for(var gy=0;gy<512;gy+=2){for(var gx=0;gx<512;gx+=2){
+    var v=Math.floor(150+Math.random()*50);
+    gctx.fillStyle='rgba('+v+','+Math.floor(v*0.9)+','+Math.floor(v*0.75)+',0.3)';
+    gctx.fillRect(gx,gy,2,2);
+  }}
+  // Large pebbles
+  for(var gi=0;gi<300;gi++){
+    var px=Math.random()*512,py=Math.random()*512;
+    var ps=Math.random()*6+3;
+    var pv=Math.floor(120+Math.random()*80);
+    gctx.fillStyle='rgb('+pv+','+Math.floor(pv*0.88)+','+Math.floor(pv*0.72)+')';
+    gctx.beginPath();gctx.arc(px,py,ps,0,Math.PI*2);gctx.fill();
+    // Highlight
+    gctx.fillStyle='rgba(255,255,240,0.2)';
+    gctx.beginPath();gctx.arc(px-ps*0.2,py-ps*0.2,ps*0.5,0,Math.PI*2);gctx.fill();
   }
-  // Darker grains
-  for(var gi=0;gi<400;gi++){
-    var gx=Math.random()*256,gy=Math.random()*256;
-    var gs=Math.random()*2+0.5;
-    var gv=Math.floor(100+Math.random()*40);
-    gctx.fillStyle='rgb('+gv+','+(gv-10)+','+(gv-20)+')';
-    gctx.beginPath();gctx.arc(gx,gy,gs,0,Math.PI*2);gctx.fill();
+  // Medium stones
+  for(var gi=0;gi<500;gi++){
+    var px=Math.random()*512,py=Math.random()*512;
+    var ps=Math.random()*3+1.5;
+    var pv=Math.floor(100+Math.random()*90);
+    gctx.fillStyle='rgb('+pv+','+Math.floor(pv*0.9)+','+Math.floor(pv*0.78)+')';
+    gctx.beginPath();gctx.arc(px,py,ps,0,Math.PI*2);gctx.fill();
+  }
+  // Dark grains for depth
+  for(var gi=0;gi<600;gi++){
+    var px=Math.random()*512,py=Math.random()*512;
+    var ps=Math.random()*1.5+0.5;
+    gctx.fillStyle='rgba(60,50,35,0.4)';
+    gctx.beginPath();gctx.arc(px,py,ps,0,Math.PI*2);gctx.fill();
   }
   var gravelTex=new THREE.CanvasTexture(gravelCanvas);
   gravelTex.wrapS=THREE.RepeatWrapping;gravelTex.wrapT=THREE.RepeatWrapping;
-  gravelTex.repeat.set(6,6);
+  gravelTex.repeat.set(4,4);
 
   // Procedural grass texture
-  var grassCanvas=document.createElement('canvas');grassCanvas.width=256;grassCanvas.height=256;
+  var grassCanvas=document.createElement('canvas');grassCanvas.width=512;grassCanvas.height=512;
   var grctx=grassCanvas.getContext('2d');
-  grctx.fillStyle='#4a8c3f';grctx.fillRect(0,0,256,256);
-  for(var gi=0;gi<1200;gi++){
-    var gx=Math.random()*256,gy=Math.random()*256;
-    var gv=Math.floor(50+Math.random()*40);
+  grctx.fillStyle='#3d7a32';grctx.fillRect(0,0,512,512);
+  // Grass variation
+  for(var gy=0;gy<512;gy+=2){for(var gx=0;gx<512;gx+=2){
+    var v=Math.floor(40+Math.random()*30);
+    var gg=Math.floor(90+Math.random()*50);
+    grctx.fillStyle='rgba('+v+','+gg+','+Math.floor(v*0.6)+',0.4)';
+    grctx.fillRect(gx,gy,2,2);
+  }}
+  // Grass blades
+  for(var gi=0;gi<2000;gi++){
+    var px=Math.random()*512,py=Math.random()*512;
+    var gv=Math.floor(45+Math.random()*40);
     var gg=Math.floor(100+Math.random()*60);
-    grctx.strokeStyle='rgb('+gv+','+gg+','+Math.floor(gv*0.6)+')';
-    grctx.lineWidth=0.8;
-    grctx.beginPath();grctx.moveTo(gx,gy);grctx.lineTo(gx+Math.random()*4-2,gy-Math.random()*6);grctx.stroke();
+    grctx.strokeStyle='rgb('+gv+','+gg+','+Math.floor(gv*0.5)+')';
+    grctx.lineWidth=1;
+    grctx.beginPath();grctx.moveTo(px,py);grctx.lineTo(px+Math.random()*6-3,py-Math.random()*8);grctx.stroke();
   }
   var grassTex=new THREE.CanvasTexture(grassCanvas);
   grassTex.wrapS=THREE.RepeatWrapping;grassTex.wrapT=THREE.RepeatWrapping;
-  grassTex.repeat.set(8,8);
+  grassTex.repeat.set(6,6);
 
   // Ground - textured grass
-  var g1=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshPhongMaterial({map:grassTex,shininess:5}));
+  var g1=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshPhongMaterial({map:grassTex,shininess:2,specular:0x111111}));
   g1.rotation.x=-Math.PI/2;g1.receiveShadow=true;scene.add(g1);
   // Gravel patio area
-  var g2=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshPhongMaterial({map:gravelTex,shininess:8}));
+  var g2=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshPhongMaterial({map:gravelTex,shininess:3,specular:0x222222}));
   g2.rotation.x=-Math.PI/2;g2.position.y=0.02;g2.receiveShadow=true;scene.add(g2);
-  // Subtle border between gravel and grass
-  var borderMat=new THREE.MeshLambertMaterial({color:0x8B7355});
-  for(var bi=-10;bi<=10;bi+=0.5){
-    var bm1=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.04,0.12),borderMat);bm1.position.set(bi,0.03,10);scene.add(bm1);
-    var bm2=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.04,0.12),borderMat);bm2.position.set(bi,0.03,-10);scene.add(bm2);
-    var bm3=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.5),borderMat);bm3.position.set(-10,0.03,bi);scene.add(bm3);
-    var bm4=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.5),borderMat);bm4.position.set(10,0.03,bi);scene.add(bm4);
-  }
+  // Stone border between gravel and grass
+  var borderMat=new THREE.MeshPhongMaterial({color:0x7a6a50,shininess:5});
+  [-10,10].forEach(function(edge){
+    var bh=new THREE.Mesh(new THREE.BoxGeometry(20,0.06,0.18),borderMat);bh.position.set(0,0.04,edge);scene.add(bh);
+    var bv=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.06,20),borderMat);bv.position.set(edge,0.04,0);scene.add(bv);
+  });
 
   // Fence - warm wood
   var fm=new THREE.MeshLambertMaterial({color:0x8B6914});

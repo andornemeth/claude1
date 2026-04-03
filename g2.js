@@ -11,7 +11,6 @@ function init(){
   sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;sun.shadow.camera.near=0.5;sun.shadow.camera.far=50;
   sun.shadow.camera.left=-15;sun.shadow.camera.right=15;sun.shadow.camera.top=15;sun.shadow.camera.bottom=-15;
   scene.add(sun);
-  scene.add(new THREE.DirectionalLight(0xe8e0d4,0.2).copy(new THREE.DirectionalLight(0xe8e0d4,0.2)));
   var fill=new THREE.DirectionalLight(0xe8e0d4,0.2);fill.position.set(-5,8,-5);scene.add(fill);
   scene.add(new THREE.HemisphereLight(0x88bbdd,0x556B2F,0.35));
   var lp=[[-6,3.5,-6],[6,3.5,-6],[-6,3.5,6],[6,3.5,6],[0,3.5,0],[-3,3.5,-3],[3,3.5,-3],[-3,3.5,3],[3,3.5,3]];
@@ -43,10 +42,21 @@ function init(){
   var bg=new THREE.Group();bg.add(mb(3,1.1,1.2,0xc8a84e,0,0.55,0));bg.add(mb(3.2,0.1,1.4,0x6b4226,0,1.15,0));
   var tap=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.5,8),new THREE.MeshLambertMaterial({color:0xdddddd}));tap.position.set(0,1.4,0);bg.add(tap);
   bg.add(mb(0.15,0.2,0.05,0x222222,0,1.7,0));
-  var sn=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.6,0.05),new THREE.MeshLambertMaterial({color:0xf0c030}));sn.position.set(0,1.9,-0.65);bg.add(sn);
-  var sc=document.createElement('canvas');sc.width=256;sc.height=64;var sx=sc.getContext('2d');
-  sx.fillStyle='#f0c030';sx.fillRect(0,0,256,64);sx.fillStyle='#3a2000';sx.font='bold 36px Courier New';sx.textAlign='center';sx.textBaseline='middle';sx.fillText('Darmstadt',128,32);
-  var st=new THREE.CanvasTexture(sc);var sf=new THREE.Mesh(new THREE.PlaneGeometry(2,0.5),new THREE.MeshBasicMaterial({map:st}));sf.position.set(0,1.9,-0.63);bg.add(sf);
+  // Darmstadt sign - on front of bar, facing toward player (+z direction)
+  var signCanvas=document.createElement('canvas');signCanvas.width=512;signCanvas.height=128;
+  var sctx=signCanvas.getContext('2d');
+  sctx.fillStyle='#e8b820';sctx.fillRect(0,0,512,128);
+  // Border
+  sctx.strokeStyle='#8a6010';sctx.lineWidth=8;sctx.strokeRect(4,4,504,120);
+  sctx.fillStyle='#3a1800';sctx.font='bold 72px Courier New';sctx.textAlign='center';sctx.textBaseline='middle';
+  sctx.fillText('Darmstadt',256,68);
+  var signTex=new THREE.CanvasTexture(signCanvas);
+  // Sign board on front of bar facing player
+  var signBoard=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.5,0.06),new THREE.MeshLambertMaterial({color:0xe8b820}));
+  signBoard.position.set(0,0.95,0.64);bg.add(signBoard);
+  // Text face on sign - facing +z (toward player)
+  var signFace=new THREE.Mesh(new THREE.PlaneGeometry(2.4,0.45),new THREE.MeshBasicMaterial({map:signTex}));
+  signFace.position.set(0,0.95,0.68);bg.add(signFace);
   bg.position.set(0,0,-7);scene.add(bg);
   // Bartender
   var bt=mkLego(0x228B22,0x1a1a1a,0x663300,'flat');bt.scale.set(1.4,1.4,1.4);

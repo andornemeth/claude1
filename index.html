@@ -83,26 +83,73 @@ var msgTimer=0;
 
 // Shirt and skin color palettes
 var shirtColors=[0xcc3333,0x3366cc,0x33aa33,0xcc9933,0x9933cc,0xcc6699,0x339999,0xff6600,0x6633cc,0xaaaa33];
-var skinColors=[0xffcc99,0xf5c08a,0xd4a574,0xc68642,0x8d5524,0xffe0bd];
-var hairColors=[0x222222,0x4a2a0a,0x8a6a3a,0x111111,0x663300,0xaa8844];
+var legoYellow=0xF2CD37; // Classic LEGO skin color
+var hairColors=[0x222222,0x4a2a0a,0x8a6a3a,0x111111,0x663300,0xaa8844,0xcc4400];
+var hairTypes=['flat','cap','tall']; // Different LEGO hair styles
 
-function mkPerson(shirtC,skinC){
-  var pg=new THREE.Group();
-  var body=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.17,0.4,8),new THREE.MeshLambertMaterial({color:shirtC}));
-  body.position.y=0.62;pg.add(body);
-  var head=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8),new THREE.MeshLambertMaterial({color:skinC}));
-  head.position.y=0.92;pg.add(head);
-  var hair=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,4,0,Math.PI*2,0,Math.PI*0.55),new THREE.MeshLambertMaterial({color:hairColors[Math.floor(Math.random()*hairColors.length)]}));
-  hair.position.y=0.94;pg.add(hair);
-  for(var s=-1;s<=1;s+=2){
-    var uleg=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.25,6),new THREE.MeshLambertMaterial({color:0x333355}));
-    uleg.rotation.x=Math.PI/2;uleg.position.set(s*0.08,0.42,0.12);pg.add(uleg);
-    var lleg=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.2,6),new THREE.MeshLambertMaterial({color:0x333355}));
-    lleg.position.set(s*0.08,0.25,0.23);pg.add(lleg);
-    var arm=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.22,6),new THREE.MeshLambertMaterial({color:skinC}));
-    arm.rotation.z=s*0.4;arm.position.set(s*0.18,0.68,0.08);pg.add(arm);
+function mkLego(shirtC,pantsC,hairC,hairType){
+  var g=new THREE.Group();
+  var ym=new THREE.MeshLambertMaterial({color:legoYellow});
+  // Head - cylinder with rounded top (LEGO minifig style)
+  var head=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.18,12),ym);
+  head.position.y=0.95;g.add(head);
+  // Head stud on top
+  var stud=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.04,8),ym);
+  stud.position.y=1.06;g.add(stud);
+  // Eyes - two small black dots
+  for(var ex=-1;ex<=1;ex+=2){
+    var eye=new THREE.Mesh(new THREE.SphereGeometry(0.02,6,6),new THREE.MeshBasicMaterial({color:0x000000}));
+    eye.position.set(ex*0.05,0.96,0.13);g.add(eye);
   }
-  return pg;
+  // Smile
+  var smile=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.015,0.02),new THREE.MeshBasicMaterial({color:0x000000}));
+  smile.position.set(0,0.9,0.135);g.add(smile);
+  // Hair
+  var hm=new THREE.MeshLambertMaterial({color:hairC});
+  if(hairType==='flat'){
+    var h=new THREE.Mesh(new THREE.CylinderGeometry(0.155,0.155,0.06,12),hm);
+    h.position.y=1.06;g.add(h);
+  }else if(hairType==='cap'){
+    var h=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.16,0.12,12),hm);
+    h.position.y=1.08;g.add(h);
+    var brim=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.02,0.1),hm);
+    brim.position.set(0,1.04,0.12);g.add(brim);
+  }else{
+    var h=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.155,0.14,12),hm);
+    h.position.y=1.1;g.add(h);
+  }
+  // Torso - blocky LEGO body
+  var torso=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.32,0.2),new THREE.MeshLambertMaterial({color:shirtC}));
+  torso.position.y=0.68;g.add(torso);
+  // Arms - C-shaped LEGO arms (cylinder + hand)
+  for(var s=-1;s<=1;s+=2){
+    var arm=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.28,8),new THREE.MeshLambertMaterial({color:shirtC}));
+    arm.position.set(s*0.22,0.65,0);g.add(arm);
+    // LEGO claw hand
+    var hand=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.06,8),ym);
+    hand.position.set(s*0.22,0.49,0);g.add(hand);
+  }
+  // Hips
+  var hips=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.08,0.18),new THREE.MeshLambertMaterial({color:pantsC}));
+  hips.position.y=0.5;g.add(hips);
+  // Legs - two rectangular LEGO legs
+  for(var s=-1;s<=1;s+=2){
+    var leg=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.3,0.16),new THREE.MeshLambertMaterial({color:pantsC}));
+    leg.position.set(s*0.085,0.3,0);g.add(leg);
+    // Foot
+    var foot=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.05,0.2),new THREE.MeshLambertMaterial({color:pantsC}));
+    foot.position.set(s*0.085,0.15,0.02);g.add(foot);
+  }
+  return g;
+}
+
+var pantsColors=[0x1a1a8a,0x333333,0x2a5a2a,0x5a2a1a,0x444444,0x1a3a6a];
+
+function mkPerson(shirtC,unused){
+  var pc=pantsColors[Math.floor(Math.random()*pantsColors.length)];
+  var hc=hairColors[Math.floor(Math.random()*hairColors.length)];
+  var ht=hairTypes[Math.floor(Math.random()*hairTypes.length)];
+  return mkLego(shirtC,pc,hc,ht);
 }
 
 function addPeopleToTable(tg){
@@ -197,13 +244,13 @@ function init(){
     tables.push({g:tg,x:pos[0],z:pos[1],need:false,has:false,ind:ind,beer:bm,cd:0});
   });
 
-  // Player
-  var pg=new THREE.Group();
-  var bd=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.3,0.8,12),new THREE.MeshLambertMaterial({color:0xffffff}));bd.position.y=0.7;pg.add(bd);
-  var ap=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.4,0.15),new THREE.MeshLambertMaterial({color:0x2266aa}));ap.position.set(0,0.6,0.15);pg.add(ap);
-  var hd=new THREE.Mesh(new THREE.SphereGeometry(0.2,12,12),new THREE.MeshLambertMaterial({color:0xffcc99}));hd.position.y=1.25;pg.add(hd);
-  [-1,1].forEach(function(s){var lg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.4,8),new THREE.MeshLambertMaterial({color:0x333333}));lg.position.set(s*0.12,0.2,0);pg.add(lg);});
-  var hb=mkBeer();hb.position.set(0.35,0.9,0.2);hb.visible=false;hb.name='hb';pg.add(hb);
+  // Player - LEGO waiter with white shirt and black pants
+  var pg=mkLego(0xffffff,0x222222,0x4a2a0a,'flat');
+  // Add blue apron over torso
+  var apron=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.2,0.22),new THREE.MeshLambertMaterial({color:0x2266cc}));
+  apron.position.set(0,0.58,0.01);pg.add(apron);
+  // Beer in hand
+  var hb=mkBeer();hb.position.set(0.3,0.55,0.1);hb.visible=false;hb.name='hb';pg.add(hb);
   scene.add(pg);player=pg;
 
   // Sun sphere in sky

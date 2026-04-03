@@ -266,15 +266,6 @@ function init(){
   camera.position.set(0,8,8);
   window.addEventListener('resize',function(){camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
 
-  // Input
-  document.addEventListener('touchstart',onTS,{passive:false});
-  document.addEventListener('touchmove',onTM,{passive:false});
-  document.addEventListener('touchend',onTE,{passive:false});
-  document.addEventListener('touchcancel',onTC,{passive:false});
-  document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault();});
-  document.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
-  document.addEventListener('click',function(){if(GS==='start'||GS==='over'){GS='playing';document.getElementById('ov').style.display='none';startGame();}});
-
   animate();
 }
 
@@ -436,8 +427,8 @@ function animate(){
     if(!collides(player.position.x,nz)) player.position.z=nz;
     if(len>0.1){pAngle=Math.atan2(dx,dz);player.rotation.y=pAngle;}
     // Animate indicators
-    var t=Date.now()*0.003;
-    for(var i=0;i<tables.length;i++){if(tables[i].need){tables[i].ind.position.y=1.8+Math.sin(t+i)*0.3;tables[i].ind.scale.setScalar(0.8+Math.sin(t*2+i)*0.3);}if(tables[i].has){tables[i].cd--;if(tables[i].cd<=0){tables[i].has=false;tables[i].beer.visible=false;}}}
+    var tt=Date.now()*0.003;
+    for(var i=0;i<tables.length;i++){if(tables[i].need){tables[i].ind.position.y=1.8+Math.sin(tt+i)*0.3;tables[i].ind.scale.setScalar(0.8+Math.sin(tt*2+i)*0.3);}if(tables[i].has){tables[i].cd--;if(tables[i].cd<=0){tables[i].has=false;tables[i].beer.visible=false;}}}
     // Camera
     camera.position.x+=(player.position.x-camera.position.x)*2*dt;
     camera.position.z+=(player.position.z+8-camera.position.z)*2*dt;
@@ -449,7 +440,24 @@ function animate(){
   drawHud();
 }
 
-init();
+// Register events BEFORE init - so they work even if Three.js fails
+function handleStart(){
+  if(GS==='start'||GS==='over'){GS='playing';document.getElementById('ov').style.display='none';startGame();}
+}
+document.addEventListener('touchstart',onTS,{passive:false});
+document.addEventListener('touchmove',onTM,{passive:false});
+document.addEventListener('touchend',onTE,{passive:false});
+document.addEventListener('touchcancel',onTC,{passive:false});
+document.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault();});
+document.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
+document.addEventListener('click',handleStart);
+// Also add direct tap handler on overlay as backup
+document.getElementById('ov').addEventListener('touchend',function(e){e.preventDefault();handleStart();},{passive:false});
+
+try{init();}catch(e){
+  console.error('Init error:',e);
+  document.getElementById('ov').querySelector('h2').textContent='Error: '+e.message;
+}
 </script>
 </body>
 </html>

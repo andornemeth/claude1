@@ -22,23 +22,45 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 </style>
 </head>
 <body>
-<div id="sc" class="hud">PONT: 0</div>
-<div id="tm" class="hud">IDO: 90</div>
-<div id="cr" class="hud">SORT VISZEL!</div>
+<div id="sc" class="hud"></div>
+<div id="tm" class="hud"></div>
+<div id="cr" class="hud"></div>
 <div id="msg" class="hud"></div>
 <div id="ov">
-  <h1>SORKERT SZIMULATOR</h1>
-  <h2>Szolgald ki a vendegeket!</h2>
-  <p>Menj a CSAPHOZ (sarga pult hatol) sorert</p>
-  <p>Vidd a PIROS jelzesu asztalokhoz</p>
-  <p>90 masodperced van!</p>
-  <p style="margin-top:8px;color:#aaa">Mobil: Bal ujj mozog, Jobb ujj gomb</p>
-  <p style="color:#aaa">PC: WASD + SPACE</p>
-  <p class="bl" style="margin-top:20px;font-size:18px;color:#ff0">KOPPINTS AZ INDITASHOZ</p>
+  <h1 id="ovT"></h1>
+  <h2 id="ovS"></h2>
+  <p id="ovI1"></p>
+  <p id="ovI2"></p>
+  <p id="ovI3"></p>
+  <p id="ovM" style="margin-top:8px;color:#aaa"></p>
+  <p id="ovP" style="color:#aaa"></p>
+  <p class="bl" id="ovStart" style="margin-top:20px;font-size:18px;color:#ff0"></p>
 </div>
 <canvas id="hud2d"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// i18n
+var lang=(navigator.language||'en').substring(0,2)==='hu'?'hu':'en';
+var T={
+  hu:{score:'PONT',time:'IDO',carrying:'SORT VISZEL!',title:'SORKERT SZIMULATOR',subtitle:'Szolgald ki a vendegeket!',
+    inst1:'Menj a CSAPHOZ (sarga pult hatol) sorert',inst2:'Vidd a PIROS jelzesu asztalokhoz',inst3:'90 masodperced van!',
+    mobile:'Mobil: Bal ujj mozog, Jobb ujj gomb',pc:'PC: WASD + SPACE',start:'KOPPINTS AZ INDITASHOZ',
+    pickup:'FELVSZ',putdown:'LETESZ',move:'MOZGAS',
+    gotBeer:'Sort vettel! Vidd egy piros asztalhoz!',goBar:'Menj a sarga CSAPHOZ hatol!',
+    goTable:'Menj egy PIROS jelzesu asztalhoz!',plusOne:'+1 PONT! Menj ujabb sorert!',
+    hintPickup:'>> NYOMD A GOMBOT SORERT <<',hintDrop:'>> NYOMD A GOMBOT LETESZNI <<',
+    end:'VEGE!',endScore:function(n){return 'Kiszolgaltal '+n+' sort!';}},
+  en:{score:'SCORE',time:'TIME',carrying:'CARRYING BEER!',title:'BEER GARDEN SIM',subtitle:'Serve the customers!',
+    inst1:'Go to the TAP (yellow bar in back) for beer',inst2:'Bring it to tables with RED indicators',inst3:'You have 90 seconds!',
+    mobile:'Mobile: Left thumb move, Right thumb button',pc:'PC: WASD + SPACE',start:'TAP TO START',
+    pickup:'PICKUP',putdown:'SERVE',move:'MOVE',
+    gotBeer:'Got beer! Bring it to a red table!',goBar:'Go to the yellow BAR in the back!',
+    goTable:'Go to a table with RED indicator!',plusOne:'+1 POINT! Get more beer!',
+    hintPickup:'>> PRESS BUTTON FOR BEER <<',hintDrop:'>> PRESS BUTTON TO SERVE <<',
+    end:'GAME OVER!',endScore:function(n){return 'You served '+n+' beers!';}}
+};
+var t=T[lang];
+
 var renderer,scene,camera,player,clock;
 var GS='start',score=0,timeLeft=90;
 var tables=[],barPos={x:0,z:-7};
@@ -50,12 +72,62 @@ var joyId=null,joyCX=0,joyCY=0;
 var btnId=null;
 var msgTimer=0;
 
+// Shirt and skin color palettes
+var shirtColors=[0xcc3333,0x3366cc,0x33aa33,0xcc9933,0x9933cc,0xcc6699,0x339999,0xff6600,0x6633cc,0xaaaa33];
+var skinColors=[0xffcc99,0xf5c08a,0xd4a574,0xc68642,0x8d5524,0xffe0bd];
+var hairColors=[0x222222,0x4a2a0a,0x8a6a3a,0x111111,0x663300,0xaa8844];
+
+function mkPerson(shirtC,skinC){
+  var pg=new THREE.Group();
+  var body=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.17,0.4,8),new THREE.MeshLambertMaterial({color:shirtC}));
+  body.position.y=0.62;pg.add(body);
+  var head=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8),new THREE.MeshLambertMaterial({color:skinC}));
+  head.position.y=0.92;pg.add(head);
+  var hair=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,4,0,Math.PI*2,0,Math.PI*0.55),new THREE.MeshLambertMaterial({color:hairColors[Math.floor(Math.random()*hairColors.length)]}));
+  hair.position.y=0.94;pg.add(hair);
+  for(var s=-1;s<=1;s+=2){
+    var uleg=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.25,6),new THREE.MeshLambertMaterial({color:0x333355}));
+    uleg.rotation.x=Math.PI/2;uleg.position.set(s*0.08,0.42,0.12);pg.add(uleg);
+    var lleg=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.2,6),new THREE.MeshLambertMaterial({color:0x333355}));
+    lleg.position.set(s*0.08,0.25,0.23);pg.add(lleg);
+    var arm=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.22,6),new THREE.MeshLambertMaterial({color:skinC}));
+    arm.rotation.z=s*0.4;arm.position.set(s*0.18,0.68,0.08);pg.add(arm);
+  }
+  return pg;
+}
+
+function addPeopleToTable(tg){
+  var seats=[{x:-0.5,z:0.8,ry:Math.PI},{x:0.5,z:0.8,ry:Math.PI},{x:-0.5,z:-0.8,ry:0},{x:0.5,z:-0.8,ry:0}];
+  var count=2+Math.floor(Math.random()*3); // 2-4 people
+  for(var i=0;i<Math.min(count,seats.length);i++){
+    var s=seats[i];
+    var sc=shirtColors[Math.floor(Math.random()*shirtColors.length)];
+    var sk=skinColors[Math.floor(Math.random()*skinColors.length)];
+    var p=mkPerson(sc,sk);
+    p.position.set(s.x,0,s.z);p.rotation.y=s.ry;
+    tg.add(p);
+  }
+}
+
 var hud=document.getElementById('hud2d');
 var hctx=hud.getContext('2d');
 function resizeHud(){hud.width=window.innerWidth;hud.height=window.innerHeight;}
 resizeHud();window.addEventListener('resize',resizeHud);
 
 function showMsg(txt){document.getElementById('msg').textContent=txt;document.getElementById('msg').style.display='block';msgTimer=120;}
+
+// Set i18n overlay text
+function setOverlayText(){
+  document.getElementById('ovT').textContent=t.title;
+  document.getElementById('ovS').textContent=t.subtitle;
+  document.getElementById('ovI1').textContent=t.inst1;
+  document.getElementById('ovI2').textContent=t.inst2;
+  document.getElementById('ovI3').textContent=t.inst3;
+  document.getElementById('ovM').textContent=t.mobile;
+  document.getElementById('ovP').textContent=t.pc;
+  document.getElementById('ovStart').textContent=t.start;
+}
+setOverlayText();
 
 function init(){
   scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a2e);scene.fog=new THREE.Fog(0x0a0a2e,20,45);
@@ -102,6 +174,7 @@ function init(){
     [-1,1].forEach(function(z){var bn=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,0.3),bnm);bn.position.set(0,0.45,z*0.8);tg.add(bn);});
     var ind=new THREE.Mesh(new THREE.SphereGeometry(0.3,12,12),new THREE.MeshBasicMaterial({color:0xff3333}));ind.position.y=1.8;ind.visible=false;tg.add(ind);
     var bm=mkBeer();bm.position.set(0,0.85,0);bm.visible=false;tg.add(bm);
+    addPeopleToTable(tg);
     tg.position.set(pos[0],0,pos[1]);scene.add(tg);
     tables.push({g:tg,x:pos[0],z:pos[1],need:false,has:false,ind:ind,beer:bm,cd:0});
   });
@@ -192,10 +265,10 @@ function doAction(){
     // Pick up beer from bar - generous range
     var db=Math.sqrt((px-barPos.x)*(px-barPos.x)+(pz-barPos.z)*(pz-barPos.z));
     if(db<3.5){
-      carrying=true;document.getElementById('cr').style.display='block';player.getObjectByName('hb').visible=true;
-      showMsg('Sort vettel! Vidd egy piros asztalhoz!');
+      carrying=true;document.getElementById('cr').textContent=t.carrying;document.getElementById('cr').style.display='block';player.getObjectByName('hb').visible=true;
+      showMsg(t.gotBeer);
     }else{
-      showMsg('Menj a sarga CSAPHOZ hatol!');
+      showMsg(t.goBar);
     }
   }else{
     // Deliver beer to table - check all needing tables
@@ -209,11 +282,11 @@ function doAction(){
         score++;updUI();
         tb.ind.material.color.setHex(0x33ff33);tb.ind.visible=true;
         setTimeout((function(t){return function(){t.ind.visible=false;};})(tb),500);
-        showMsg('+1 PONT! Menj ujabb sorert!');
+        showMsg(t.plusOne);
         delivered=true;break;
       }
     }
-    if(!delivered) showMsg('Menj egy PIROS jelzesu asztalhoz!');
+    if(!delivered) showMsg(t.goTable);
   }
 }
 
@@ -224,14 +297,14 @@ function startGame(){
   for(var i=0;i<tables.length;i++){tables[i].need=false;tables[i].has=false;tables[i].ind.visible=false;tables[i].beer.visible=false;tables[i].cd=0;}
   updUI();setN();setN();setN();
   if(timerI)clearInterval(timerI);
-  timerI=setInterval(function(){if(GS!=='playing')return;timeLeft--;document.getElementById('tm').textContent='IDO: '+timeLeft;if(timeLeft<=0)endG();},1000);
+  timerI=setInterval(function(){if(GS!=='playing')return;timeLeft--;document.getElementById('tm').textContent=t.time+': '+timeLeft;if(timeLeft<=0)endG();},1000);
   if(needI)clearInterval(needI);
   needI=setInterval(function(){if(GS!=='playing')return;setN();},4000);
 }
 
 function setN(){var a=[];for(var i=0;i<tables.length;i++){if(!tables[i].need&&!tables[i].has)a.push(i);}if(!a.length)return;var idx=a[Math.floor(Math.random()*a.length)];tables[idx].need=true;tables[idx].ind.visible=true;tables[idx].ind.material.color.setHex(0xff3333);}
-function endG(){GS='over';if(timerI)clearInterval(timerI);if(needI)clearInterval(needI);var ov=document.getElementById('ov');ov.querySelector('h1').textContent='VEGE!';ov.querySelector('h2').textContent='Kiszolgaltal '+score+' sort!';ov.style.display='flex';}
-function updUI(){document.getElementById('sc').textContent='PONT: '+score;document.getElementById('tm').textContent='IDO: '+timeLeft;}
+function endG(){GS='over';if(timerI)clearInterval(timerI);if(needI)clearInterval(needI);var ov=document.getElementById('ov');ov.querySelector('h1').textContent=t.end;ov.querySelector('h2').textContent=t.endScore(score);ov.style.display='flex';}
+function updUI(){document.getElementById('sc').textContent=t.score+': '+score;document.getElementById('tm').textContent=t.time+': '+timeLeft;}
 
 function drawHud(){
   hctx.clearRect(0,0,hud.width,hud.height);
@@ -244,7 +317,7 @@ function drawHud(){
   hctx.beginPath();hctx.arc(jx,jy,55,0,Math.PI*2);hctx.stroke();
   hctx.globalAlpha=0.5;hctx.fillStyle='#0ff';
   hctx.beginPath();hctx.arc(jx+jDX*45,jy+jDZ*45,18,0,Math.PI*2);hctx.fill();
-  if(joyId===null){hctx.globalAlpha=0.4;hctx.fillStyle='#0ff';hctx.font='11px Courier New';hctx.textAlign='center';hctx.fillText('MOZGAS',jx,jy+4);}
+  if(joyId===null){hctx.globalAlpha=0.4;hctx.fillStyle='#0ff';hctx.font='11px Courier New';hctx.textAlign='center';hctx.fillText(t.move,jx,jy+4);}
   // Action button - BIG
   var br=btnRect();
   var bcx=br.x+br.r,bcy=br.y+br.r;
@@ -253,7 +326,7 @@ function drawHud(){
   hctx.globalAlpha=1;hctx.strokeStyle=carrying?'#4f4':'#fc0';hctx.lineWidth=4;
   hctx.beginPath();hctx.arc(bcx,bcy,br.r,0,Math.PI*2);hctx.stroke();
   hctx.fillStyle='#fff';hctx.font='bold '+Math.max(14,Math.round(br.r*0.35))+'px Courier New';hctx.textAlign='center';hctx.textBaseline='middle';
-  hctx.fillText(carrying?'LETESZ':'FELVSZ',bcx,bcy);
+  hctx.fillText(carrying?t.putdown:t.pickup,bcx,bcy);
   // Proximity hint
   var px=player.position.x,pz=player.position.z;
   var nearBar=Math.sqrt((px-barPos.x)*(px-barPos.x)+(pz-barPos.z)*(pz-barPos.z))<3.5;
@@ -261,10 +334,10 @@ function drawHud(){
   for(var i=0;i<tables.length;i++){if(tables[i].need&&Math.sqrt((px-tables[i].x)*(px-tables[i].x)+(pz-tables[i].z)*(pz-tables[i].z))<3)nearTable=true;}
   if(!carrying&&nearBar){
     hctx.globalAlpha=0.8;hctx.fillStyle='#ff0';hctx.font='bold 16px Courier New';hctx.textAlign='center';
-    hctx.fillText('>> NYOMD A GOMBOT SORERT <<',hud.width/2,hud.height/2);
+    hctx.fillText(t.hintPickup,hud.width/2,hud.height/2);
   }else if(carrying&&nearTable){
     hctx.globalAlpha=0.8;hctx.fillStyle='#4f4';hctx.font='bold 16px Courier New';hctx.textAlign='center';
-    hctx.fillText('>> NYOMD A GOMBOT LETESZNI <<',hud.width/2,hud.height/2);
+    hctx.fillText(t.hintDrop,hud.width/2,hud.height/2);
   }
   hctx.globalAlpha=1;
 }

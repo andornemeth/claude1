@@ -40,7 +40,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // i18n
-var lang=(navigator.language||'en').substring(0,2)==='hu'?'hu':'en';
+var lc=(navigator.language||'en').substring(0,2);
+var lang=lc==='hu'?'hu':lc==='sr'?'sr':'en';
 var T={
   hu:{score:'PONT',time:'IDO',carrying:'SORT VISZEL!',title:'SORKERT SZIMULATOR',subtitle:'Szolgald ki a vendegeket!',
     inst1:'Menj a CSAPHOZ (sarga pult hatol) sorert',inst2:'Vidd a PIROS jelzesu asztalokhoz',inst3:'90 masodperced van!',
@@ -50,6 +51,14 @@ var T={
     goTable:'Menj egy PIROS jelzesu asztalhoz!',plusOne:'+1 PONT! Menj ujabb sorert!',
     hintPickup:'>> NYOMD A GOMBOT SORERT <<',hintDrop:'>> NYOMD A GOMBOT LETESZNI <<',
     end:'VEGE!',endScore:function(n){return 'Kiszolgaltal '+n+' sort!';}},
+  sr:{score:'POENI',time:'VREME',carrying:'NOSIS PIVO!',title:'BASTA SIMULATOR',subtitle:'Posluzi goste!',
+    inst1:'Idi do TOCKA (zuti sank pozadi) za pivo',inst2:'Odnesi do stolova sa CRVENIM indikatorom',inst3:'Imas 90 sekundi!',
+    mobile:'Mobil: Levi palac pomera, Desni palac dugme',pc:'PC: WASD + SPACE',start:'DODIRNI ZA POCETAK',
+    pickup:'UZMI',putdown:'POSLUZI',move:'POMERI',
+    gotBeer:'Uzeo si pivo! Odnesi do crvenog stola!',goBar:'Idi do zutog TOCKA pozadi!',
+    goTable:'Idi do stola sa CRVENIM indikatorom!',plusOne:'+1 POEN! Idi po jos piva!',
+    hintPickup:'>> PRITISNI DUGME ZA PIVO <<',hintDrop:'>> PRITISNI DUGME ZA SERVIS <<',
+    end:'KRAJ!',endScore:function(n){return 'Posluzio si '+n+' piva!';}},
   en:{score:'SCORE',time:'TIME',carrying:'CARRYING BEER!',title:'BEER GARDEN SIM',subtitle:'Serve the customers!',
     inst1:'Go to the TAP (yellow bar in back) for beer',inst2:'Bring it to tables with RED indicators',inst3:'You have 90 seconds!',
     mobile:'Mobile: Left thumb move, Right thumb button',pc:'PC: WASD + SPACE',start:'TAP TO START',
@@ -130,7 +139,7 @@ function setOverlayText(){
 setOverlayText();
 
 function init(){
-  scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a2e);scene.fog=new THREE.Fog(0x0a0a2e,20,45);
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x87CEEB);scene.fog=new THREE.Fog(0x87CEEB,25,55);
   camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,100);
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(window.innerWidth,window.innerHeight);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.shadowMap.enabled=true;
@@ -138,17 +147,27 @@ function init(){
   document.body.insertBefore(renderer.domElement,document.body.firstChild);
   clock=new THREE.Clock();
 
-  scene.add(new THREE.AmbientLight(0x334455,0.6));
-  var mn=new THREE.DirectionalLight(0x8899bb,0.4);mn.position.set(10,20,5);mn.castShadow=true;scene.add(mn);
-  var lp=[[-6,4,-6],[6,4,-6],[-6,4,6],[6,4,6],[0,4,0],[-3,4,-3],[3,4,-3],[-3,4,3],[3,4,3],[0,4,-8],[0,4,8],[-8,4,0],[8,4,0]];
-  for(var i=0;i<lp.length;i++){var l=new THREE.PointLight(0xffaa44,0.5,12);l.position.set(lp[i][0],lp[i][1],lp[i][2]);scene.add(l);var b=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshBasicMaterial({color:0xffdd66}));b.position.copy(l.position);scene.add(b);}
+  // Bright sunny lighting
+  scene.add(new THREE.AmbientLight(0xffffff,0.7));
+  var sun=new THREE.DirectionalLight(0xfffde8,1.0);sun.position.set(8,15,5);sun.castShadow=true;
+  sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;sun.shadow.camera.near=0.5;sun.shadow.camera.far=50;
+  sun.shadow.camera.left=-15;sun.shadow.camera.right=15;sun.shadow.camera.top=15;sun.shadow.camera.bottom=-15;
+  scene.add(sun);
+  // Warm fill light
+  var fill=new THREE.DirectionalLight(0xffeedd,0.3);fill.position.set(-5,10,-5);scene.add(fill);
+  // Hemisphere light for sky/ground color blending
+  scene.add(new THREE.HemisphereLight(0x87CEEB,0x556B2F,0.4));
+  // String lights (decorative, visible but not strong in daylight)
+  var lp=[[-6,3.5,-6],[6,3.5,-6],[-6,3.5,6],[6,3.5,6],[0,3.5,0],[-3,3.5,-3],[3,3.5,-3],[-3,3.5,3],[3,3.5,3]];
+  for(var i=0;i<lp.length;i++){var b=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6),new THREE.MeshBasicMaterial({color:0xffeeaa}));b.position.set(lp[i][0],lp[i][1],lp[i][2]);scene.add(b);}
 
-  // Ground
-  var g1=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshLambertMaterial({color:0x2d5a1e}));g1.rotation.x=-Math.PI/2;g1.receiveShadow=true;scene.add(g1);
-  var g2=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshLambertMaterial({color:0x8a7a5a}));g2.rotation.x=-Math.PI/2;g2.position.y=0.01;scene.add(g2);
+  // Ground - bright green grass
+  var g1=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshLambertMaterial({color:0x4CAF50}));g1.rotation.x=-Math.PI/2;g1.receiveShadow=true;scene.add(g1);
+  // Gravel/patio area - warm sandy color
+  var g2=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshLambertMaterial({color:0xD2B48C}));g2.rotation.x=-Math.PI/2;g2.position.y=0.01;scene.add(g2);
 
-  // Fence
-  var fm=new THREE.MeshLambertMaterial({color:0x5c3a1e});
+  // Fence - warm wood
+  var fm=new THREE.MeshLambertMaterial({color:0x8B6914});
   for(var x=-10;x<=10;x++){for(var s=0;s<4;s++){var p=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.2,0.1),fm);if(s===0)p.position.set(x,0.6,-10);else if(s===1)p.position.set(x,0.6,10);else if(s===2)p.position.set(-10,0.6,x);else p.position.set(10,0.6,x);scene.add(p);}}
   for(var s=0;s<4;s++){var r=new THREE.Mesh(new THREE.BoxGeometry(s<2?20:0.08,0.08,s<2?0.08:20),fm);if(s===0)r.position.set(0,0.9,-10);else if(s===1)r.position.set(0,0.9,10);else if(s===2)r.position.set(-10,0.9,0);else r.position.set(10,0.9,0);scene.add(r);}
 
@@ -159,14 +178,13 @@ function init(){
   bg.add(mb(0.15,0.2,0.05,0x222222,0,1.7,0));
   var sn=new THREE.Mesh(new THREE.BoxGeometry(2,0.5,0.05),new THREE.MeshBasicMaterial({color:0xffcc00}));sn.position.set(0,1.9,-0.65);bg.add(sn);
   bg.position.set(0,0,-7);scene.add(bg);
-  var bl2=new THREE.PointLight(0xffcc44,1.2,8);bl2.position.set(0,2.5,-7);scene.add(bl2);
 
-  // Trees
-  var tm=new THREE.MeshLambertMaterial({color:0x1a4a0a}),trm=new THREE.MeshLambertMaterial({color:0x4a2a0a});
+  // Trees - bright summer green
+  var tm=new THREE.MeshLambertMaterial({color:0x2E8B2E}),trm=new THREE.MeshLambertMaterial({color:0x6B3A1F});
   [[-8,-8],[8,-8],[-8,8],[8,8],[-5,-9],[5,-9],[-9,0],[9,0],[-5,9],[5,9]].forEach(function(p){var t=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,2,8),trm);t.position.set(p[0],1,p[1]);t.castShadow=true;scene.add(t);var v=new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8),tm);v.position.set(p[0],3,p[1]);v.castShadow=true;scene.add(v);});
 
   // Tables
-  var tbm=new THREE.MeshLambertMaterial({color:0x6b4226}),bnm=new THREE.MeshLambertMaterial({color:0x5a3a1a});
+  var tbm=new THREE.MeshLambertMaterial({color:0x8B5E3C}),bnm=new THREE.MeshLambertMaterial({color:0x7A4F2E});
   [[-5,-3],[-2,-3],[2,-3],[5,-3],[-5,1],[-2,1],[2,1],[5,1],[-5,5],[-2,5],[2,5],[5,5]].forEach(function(pos){
     var tg=new THREE.Group();
     var tt=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.08,1),tbm);tt.position.y=0.75;tt.castShadow=true;tg.add(tt);
@@ -187,6 +205,17 @@ function init(){
   [-1,1].forEach(function(s){var lg=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.4,8),new THREE.MeshLambertMaterial({color:0x333333}));lg.position.set(s*0.12,0.2,0);pg.add(lg);});
   var hb=mkBeer();hb.position.set(0.35,0.9,0.2);hb.visible=false;hb.name='hb';pg.add(hb);
   scene.add(pg);player=pg;
+
+  // Sun sphere in sky
+  var sunSphere=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,16),new THREE.MeshBasicMaterial({color:0xFFFF88}));
+  sunSphere.position.set(15,25,10);scene.add(sunSphere);
+  // Clouds
+  var cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:0.85});
+  [[-12,18,-15],[8,16,-20],[20,17,-10],[-5,19,-25],[15,20,-18]].forEach(function(cp){
+    var cg=new THREE.Group();
+    for(var ci=0;ci<4;ci++){var cs=new THREE.Mesh(new THREE.SphereGeometry(1+Math.random()*1.5,8,8),cloudMat);cs.position.set(ci*1.2-1.5,Math.random()*0.5,Math.random()*0.8);cs.scale.y=0.5;cg.add(cs);}
+    cg.position.set(cp[0],cp[1],cp[2]);scene.add(cg);
+  });
 
   camera.position.set(0,8,8);
   window.addEventListener('resize',function(){camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});

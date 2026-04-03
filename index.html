@@ -73,7 +73,7 @@ var t=T[lang];
 var renderer,scene,camera,player,clock;
 var GS='start',score=0,timeLeft=90;
 var tables=[],barPos={x:0,z:-7};
-var carrying=false,keys={},pAngle=0;
+var carrying=0,maxCarry=4,keys={},pAngle=0;
 var isMob='ontouchstart'in window||navigator.maxTouchPoints>0;
 var jDX=0,jDZ=0;
 var timerI=null,needI=null;
@@ -298,6 +298,19 @@ function init(){
   var sn=new THREE.Mesh(new THREE.BoxGeometry(2,0.5,0.05),new THREE.MeshBasicMaterial({color:0xffcc00}));sn.position.set(0,1.9,-0.65);bg.add(sn);
   bg.position.set(0,0,-7);scene.add(bg);
 
+  // Bartender - friendly bearded LEGO figure behind the bar
+  var bartender=mkLego(0x228B22,0x222222,0x663300,'flat');
+  // Beard - brown box under face
+  var beard=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.1,0.12),new THREE.MeshLambertMaterial({color:0x5c3317}));
+  beard.position.set(0,0.86,0.1);bartender.add(beard);
+  // Mustache
+  var mustache=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.06),new THREE.MeshLambertMaterial({color:0x4a2810}));
+  mustache.position.set(0,0.91,0.13);bartender.add(mustache);
+  // Wider smile for friendly look
+  bartender.children.forEach(function(c){if(c.geometry&&c.geometry.parameters&&c.geometry.parameters.width===0.08&&c.geometry.parameters.height===0.015){c.scale.x=1.5;c.position.y=0.885;}});
+  bartender.position.set(0,0,-7.6);bartender.rotation.y=Math.PI;
+  scene.add(bartender);
+
   // Trees - bright summer green
   var tm=new THREE.MeshLambertMaterial({color:0x2E8B2E}),trm=new THREE.MeshLambertMaterial({color:0x6B3A1F});
   [[-8,-8],[8,-8],[-8,8],[8,8],[-5,-9],[5,-9],[-9,0],[9,0],[-5,9],[5,9]].forEach(function(p){var t=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,2,8),trm);t.position.set(p[0],1,p[1]);t.castShadow=true;scene.add(t);var v=new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8),tm);v.position.set(p[0],3,p[1]);v.castShadow=true;scene.add(v);});
@@ -321,8 +334,16 @@ function init(){
   // Add blue apron over torso
   var apron=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.2,0.22),new THREE.MeshLambertMaterial({color:0x2266cc}));
   apron.position.set(0,0.58,0.01);pg.add(apron);
-  // Beer in hand
-  var hb=mkBeer();hb.position.set(0.3,0.55,0.1);hb.visible=false;hb.name='hb';pg.add(hb);
+  // Tray on hand
+  var tray=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,0.02,12),new THREE.MeshLambertMaterial({color:0x666666}));
+  tray.position.set(0.3,0.52,0.1);tray.visible=false;tray.name='tray';pg.add(tray);
+  // 4 beers on tray
+  var beerPositions=[{x:0.1,z:0.05},{x:-0.1,z:0.05},{x:0.1,z:-0.05},{x:-0.1,z:-0.05}];
+  for(var bi=0;bi<4;bi++){
+    var hb=mkBeer();hb.scale.set(0.7,0.7,0.7);
+    hb.position.set(0.3+beerPositions[bi].x,0.55,0.1+beerPositions[bi].z);
+    hb.visible=false;hb.name='hb'+bi;pg.add(hb);
+  }
   scene.add(pg);player=pg;
 
   // Sun sphere in sky
@@ -397,20 +418,34 @@ function onTM(e){
 function onTE(e){for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(t.identifier===joyId){joyId=null;jDX=0;jDZ=0;}if(t.identifier===btnId)btnId=null;}}
 function onTC(){joyId=null;btnId=null;jDX=0;jDZ=0;}
 
+function updateBeerVisuals(){
+  var trayObj=player.getObjectByName('tray');
+  if(trayObj)trayObj.visible=carrying>0;
+  for(var i=0;i<4;i++){
+    var b=player.getObjectByName('hb'+i);
+    if(b)b.visible=i<carrying;
+  }
+  if(carrying>0){
+    document.getElementById('cr').textContent=(lang==='hu'?'SOR: ':lang==='sr'?'PIVO: ':'BEER: ')+carrying+'/'+maxCarry;
+    document.getElementById('cr').style.display='block';
+  }else{
+    document.getElementById('cr').style.display='none';
+  }
+}
+
 function doAction(){
   if(GS!=='playing')return;
   var px=player.position.x,pz=player.position.z;
-  if(!carrying){
-    // Pick up beer from bar - generous range
-    var db=Math.sqrt((px-barPos.x)*(px-barPos.x)+(pz-barPos.z)*(pz-barPos.z));
-    if(db<3.5){
-      carrying=true;document.getElementById('cr').textContent=t.carrying;document.getElementById('cr').style.display='block';player.getObjectByName('hb').visible=true;
-      showMsg(t.gotBeer);
-    }else{
-      showMsg(t.goBar);
-    }
-  }else{
-    // Deliver beer to closest table that needs it
+  // Near bar - pick up beers (fill up to 4)
+  var db=Math.sqrt((px-barPos.x)*(px-barPos.x)+(pz-barPos.z)*(pz-barPos.z));
+  if(db<3.5&&carrying<maxCarry){
+    carrying=maxCarry;
+    updateBeerVisuals();
+    showMsg(t.gotBeer);
+    return;
+  }
+  // Have beers - deliver to closest needing table
+  if(carrying>0){
     var closest=null,closestDist=Infinity;
     for(var i=0;i<tables.length;i++){
       var tb=tables[i];if(!tb.need)continue;
@@ -419,7 +454,8 @@ function doAction(){
     }
     if(closest){
       closest.need=false;closest.has=true;closest.ind.visible=false;closest.beer.visible=true;closest.cd=300;
-      carrying=false;document.getElementById('cr').style.display='none';player.getObjectByName('hb').visible=false;
+      carrying--;
+      updateBeerVisuals();
       score++;updUI();
       closest.ind.material.color.setHex(0x33ff33);closest.ind.visible=true;
       setTimeout((function(tb){return function(){tb.ind.visible=false;};})(closest),500);
@@ -427,13 +463,15 @@ function doAction(){
     }else{
       showMsg(t.goTable);
     }
+  }else{
+    showMsg(t.goBar);
   }
 }
 
 function startGame(){
-  score=0;timeLeft=90;carrying=false;
+  score=0;timeLeft=90;carrying=0;
   document.getElementById('cr').style.display='none';document.getElementById('msg').style.display='none';
-  player.getObjectByName('hb').visible=false;player.position.set(0,0,3);
+  updateBeerVisuals();player.position.set(0,0,3);
   for(var i=0;i<tables.length;i++){tables[i].need=false;tables[i].has=false;tables[i].ind.visible=false;tables[i].beer.visible=false;tables[i].cd=0;}
   updUI();setN();setN();setN();
   if(timerI)clearInterval(timerI);
@@ -461,21 +499,21 @@ function drawHud(){
   // Action button - BIG
   var br=btnRect();
   var bcx=br.x+br.r,bcy=br.y+br.r;
-  hctx.globalAlpha=0.4;hctx.fillStyle=carrying?'#4a4':'#fa0';
+  hctx.globalAlpha=0.4;hctx.fillStyle=carrying>0?'#4a4':'#fa0';
   hctx.beginPath();hctx.arc(bcx,bcy,br.r,0,Math.PI*2);hctx.fill();
-  hctx.globalAlpha=1;hctx.strokeStyle=carrying?'#4f4':'#fc0';hctx.lineWidth=4;
+  hctx.globalAlpha=1;hctx.strokeStyle=carrying>0?'#4f4':'#fc0';hctx.lineWidth=4;
   hctx.beginPath();hctx.arc(bcx,bcy,br.r,0,Math.PI*2);hctx.stroke();
   hctx.fillStyle='#fff';hctx.font='bold '+Math.max(14,Math.round(br.r*0.35))+'px Courier New';hctx.textAlign='center';hctx.textBaseline='middle';
-  hctx.fillText(carrying?t.putdown:t.pickup,bcx,bcy);
+  hctx.fillText(carrying>0?t.putdown+(carrying>1?' x'+carrying:''):t.pickup,bcx,bcy);
   // Proximity hint
   var px=player.position.x,pz=player.position.z;
   var nearBar=Math.sqrt((px-barPos.x)*(px-barPos.x)+(pz-barPos.z)*(pz-barPos.z))<3.5;
   var nearTable=false;
   for(var i=0;i<tables.length;i++){if(tables[i].need&&Math.sqrt((px-tables[i].x)*(px-tables[i].x)+(pz-tables[i].z)*(pz-tables[i].z))<3)nearTable=true;}
-  if(!carrying&&nearBar){
+  if(carrying<maxCarry&&nearBar){
     hctx.globalAlpha=0.8;hctx.fillStyle='#ff0';hctx.font='bold 16px Courier New';hctx.textAlign='center';
     hctx.fillText(t.hintPickup,hud.width/2,hud.height/2);
-  }else if(carrying&&nearTable){
+  }else if(carrying>0&&nearTable){
     hctx.globalAlpha=0.8;hctx.fillStyle='#4f4';hctx.font='bold 16px Courier New';hctx.textAlign='center';
     hctx.fillText(t.hintDrop,hud.width/2,hud.height/2);
   }
